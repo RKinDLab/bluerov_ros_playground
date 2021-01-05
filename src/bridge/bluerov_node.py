@@ -33,6 +33,11 @@ from std_msgs.msg import Bool
 from std_msgs.msg import String
 from std_msgs.msg import UInt16
 
+
+# kg/m^3 convenience
+DENSITY_FRESHWATER = 997
+DENSITY_SALTWATER = 1029
+
 class BlueRov(Bridge):
     def __init__(self, device='udp:192.168.2.1:14550', baudrate=115200):
         """ BlueRov ROS Bridge
@@ -78,6 +83,12 @@ class BlueRov(Bridge):
             [
                 self._create_odometry_msg,
                 '/odometry',
+                Odometry,
+                1
+            ],
+            [
+                self._create_depth_msg,
+                '/depth',
                 Odometry,
                 1
             ],
@@ -430,6 +441,28 @@ class BlueRov(Bridge):
         self._create_header(msg)
         msg.step = int(msg.step)
         self.pub.set_data('/camera/image_raw', msg)
+
+    def _create_depth_msg(self):
+        if 'SCALED_PRESSURE2' not in self.get_data():
+            raise Exception('no Bar30 depth')
+
+        msg = Odometry()
+        self._create_header(msg)
+        depth_data = self.get_data()['SCALED_PRESSURE2']
+        #  'press_diff': -12.65999984741211, 'time_boot_ms': 8357069, 'temperature': 2462, 'press_abs': 1022.0 
+        # preassure comes in hPA apparently (1022.0 )
+        pressure = depth_data['press_abs']
+        temperature = depth_data['temperature']
+        # need to convert
+        # https://github.com/bluerobotics/ms5837-python    
+        depth = (100.*pressure-101300)/(DENSITY_FRESHWATER*9.80665)
+        # print('altitude', (1-pow((pressure/1013.25),.190284))*145366.45*.3048 )
+        
+        msg.pose.pose.position.z = depth
+        self.pub.set_data('/depth', msg)
+  
+
+
 
     def _create_ROV_state(self):
         """ Create ROV state message from ROV data
