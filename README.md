@@ -45,6 +45,10 @@ What is possible ?
 - BlueRov2 node
 
     For more information check [here](src/bridge/README.md).
+    - `roslaunch bluerov_ros_playground bluerov2_node.launch`
+    You can pass the water density (in kg/m^3)as argument. For reference FRESHWATER = 997, SALTWATER = 1029. 
+    - `roslaunch bluerov_ros_playground bluerov2_node.launch density:=997`
+
 
 - Launch user example
 

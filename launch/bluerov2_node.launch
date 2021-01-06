@@ -2,9 +2,14 @@
 <launch>
     <arg name="log_output" default="screen"/>
     <arg name="bluerov_node_device" default="udp:192.168.2.1:14550"/>
+    <arg name="density" default="997"/>
+    <!--  # kg/m^3 convenience DENSITY_FRESHWATER = 997
+							   DENSITY_SALTWATER = 1029 -->
+
 
     <!-- start bluerov2 node -->
     <node respawn="true" pkg="bluerov_ros_playground" type="node" name="node" output="$(arg log_output)">
         <param name="device" value="$(arg bluerov_node_device)"/>
+        <param name="density_water" value="$(arg density)"/>
     </node>
 </launch>

@@ -35,8 +35,8 @@ from std_msgs.msg import UInt16
 
 
 # kg/m^3 convenience
-DENSITY_FRESHWATER = 997
-DENSITY_SALTWATER = 1029
+#DENSITY_FRESHWATER = 997
+#DENSITY_SALTWATER = 1029
 
 class BlueRov(Bridge):
     def __init__(self, device='udp:192.168.2.1:14550', baudrate=115200):
@@ -50,7 +50,10 @@ class BlueRov(Bridge):
         self.pub = Pubs()
         self.sub = Subs()
         self.ROV_name = 'BlueRov2'
-        self.model_base_link = '/base_link'
+        self.model_base_link = 'base_link'
+        self.water_type = rospy.get_param('/node/density_water')
+        print(self.water_type)
+        #exit()
 
         self.video = Video()
         self.video_bridge = CvBridge()
@@ -277,7 +280,7 @@ class BlueRov(Bridge):
             ]
         self.set_attitude_target(params)
 
-    def _create_header(self, msg):
+    def _create_header(self, msg,link=None):
         """ Create ROS message header
 
         Args:
@@ -376,10 +379,14 @@ class BlueRov(Bridge):
         msg.linear_acceleration.y = acc_data[1]/100
         msg.linear_acceleration.z = acc_data[2]/100
         msg.linear_acceleration_covariance = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-        msg.angular_velocity.x = gyr_data[0]/1000
-        msg.angular_velocity.y = gyr_data[1]/1000
-        msg.angular_velocity.z = gyr_data[2]/1000
+        # Original way
+        #msg.angular_velocity.x = gyr_data[0]/1000
+        #msg.angular_velocity.y = gyr_data[1]/1000
+        #msg.angular_velocity.z = gyr_data[2]/1000
+        # But we need to convert to ENU: (Also we may need more transforms because I do not remember how to imu is located)
+        msg.angular_velocity.x = gyr_data[1]/1000
+        msg.angular_velocity.y = gyr_data[0]/1000
+        msg.angular_velocity.z = -gyr_data[2]/1000
         msg.angular_velocity_covariance = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 
         #http://mavlink.org/messages/common#ATTITUDE
@@ -448,6 +455,9 @@ class BlueRov(Bridge):
 
         msg = Odometry()
         self._create_header(msg)
+        msg.header.frame_id = 'odom'
+        msg.child_frame_id = 'base_link' 
+
         depth_data = self.get_data()['SCALED_PRESSURE2']
         #  'press_diff': -12.65999984741211, 'time_boot_ms': 8357069, 'temperature': 2462, 'press_abs': 1022.0 
         # preassure comes in hPA apparently (1022.0 )
@@ -455,7 +465,7 @@ class BlueRov(Bridge):
         temperature = depth_data['temperature']
         # need to convert
         # https://github.com/bluerobotics/ms5837-python    
-        depth = (100.*pressure-101300)/(DENSITY_FRESHWATER*9.80665)
+        depth = (100.*pressure-101300)/(self.water_type*9.80665)
         # print('altitude', (1-pow((pressure/1013.25),.190284))*145366.45*.3048 )
         
         msg.pose.pose.position.z = depth
