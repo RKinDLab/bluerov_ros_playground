@@ -1,7 +1,9 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="log_output" default="screen"/>
+    <!---arg name="bluerov_node_device" default="udp:192.168.2.1:14550"/-->
     <arg name="bluerov_node_device" default="udp:192.168.2.1:14550"/>
+    
     <arg name="density" default="997"/>
     <!--  # kg/m^3 convenience DENSITY_FRESHWATER = 997
 							   DENSITY_SALTWATER = 1029 -->
@@ -12,4 +14,9 @@
         <param name="device" value="$(arg bluerov_node_device)"/>
         <param name="density_water" value="$(arg density)"/>
     </node>
+
+    <!--node name="joy_controller" pkg="bluerov_ros_playground" type="joystick_controller.py" output="screen">
+  	</node-->
+
+
 </launch>
