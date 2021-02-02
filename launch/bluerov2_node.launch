@@ -3,10 +3,9 @@
     <arg name="log_output" default="screen"/>
     <!---arg name="bluerov_node_device" default="udp:192.168.2.1:14550"/-->
     <arg name="bluerov_node_device" default="udp:192.168.2.1:14550"/>
-    
+    <arg name="joy_dev" default="/dev/input/js0"/>
     <arg name="density" default="997"/>
-    <!--  # kg/m^3 convenience DENSITY_FRESHWATER = 997
-							   DENSITY_SALTWATER = 1029 -->
+    <!--  # kg/m^3 convenience DENSITY_FRESHWATER = 997, DENSITY_SALTWATER = 1029 -->
 
 
     <!-- start bluerov2 node -->
@@ -15,8 +14,22 @@
         <param name="density_water" value="$(arg density)"/>
     </node>
 
-    <!--node name="joy_controller" pkg="bluerov_ros_playground" type="joystick_controller.py" output="screen">
-  	</node-->
+    <!-- bring joystick to ROS -->
+    <node respawn="true" pkg="joy" type="joy_node" name="joy_node">
+    	  <param name="dev" type="string" value="$(arg joy_dev)" />
+    </node>
+
+    <!-- start dvl node -->
+  	<node name="dvl" pkg="waterlinked_a50_ros_driver" type="publisher.py" output="screen">
+  	</node>
+    
+    <!-- start joystick controler node -->
+    <!-- This node gives you override control over the bluerov -->
+    <node name="joy_controller" pkg="bluerov_ros_playground" type="joystick_controller.py" output="screen">
+  	</node>
+
+  	
+
 
 
 </launch>
