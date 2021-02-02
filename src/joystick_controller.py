@@ -10,6 +10,8 @@ from nav_msgs.msg import Odometry
 from mavros_msgs.msg import OverrideRCIn
 from geometry_msgs.msg import TwistStamped
 from sensor_msgs.msg import Joy
+from std_msgs.msg import UInt16, Bool, String
+
 # topic definition
 TOPIC_ODOM = 'odometry/filtered'
 TOPIC_CTRL = 'mavros/rc/override'
@@ -46,13 +48,28 @@ class Controller(object):
 
         self.s = 70
 
-
+        self.joy_control = 0
 
         self.h0 = 0
 
 
         # Define pulisher: topic name, message type
-        self.pub = rospy.Publisher('/BlueRov2/servo1/set_pwm', TwistStamped, queue_size = 20)
+
+        
+        self.joy_l1 = 0
+        self.joy_r1 = 0  
+
+       
+
+        self.pub_pitch = rospy.Publisher('/BlueRov2/rc_channel1/set_pwm', UInt16, queue_size = 10)
+        self.pub_roll = rospy.Publisher('/BlueRov2/rc_channel2/set_pwm', UInt16, queue_size = 10)
+        self.pub_vz = rospy.Publisher('/BlueRov2/rc_channel3/set_pwm', UInt16, queue_size = 10)
+        self.pub_yaw = rospy.Publisher('/BlueRov2/rc_channel4/set_pwm', UInt16, queue_size = 10)
+        self.pub_vx = rospy.Publisher('/BlueRov2/rc_channel5/set_pwm', UInt16, queue_size = 10)
+        self.pub_vy = rospy.Publisher('/BlueRov2/rc_channel6/set_pwm', UInt16, queue_size = 10)
+        self.pub_arm = rospy.Publisher('/BlueRov2/arm', Bool, queue_size = 10)
+        self.pub_manual = rospy.Publisher('/BlueRov2/mode/set', String, queue_size = 10)
+        
         # Define subscriber: topic name, message type, function callback
         self.sub = rospy.Subscriber('/joy', Joy, self.joy_callback)
 
@@ -62,9 +79,12 @@ class Controller(object):
     def joy_callback(self, msg):
         """Saves the AUV position when a message is received."""
         temp = np.array(msg.axes)
-        self.velocity = np.array([temp[0],temp[1],temp[4],temp[5]])/5.
+        self.velocity = np.array([temp[0]/3.,temp[1]/5.,temp[3]/5.,temp[4]/5.])
+        temp = np.array(msg.buttons)
+        self.joy_control = temp[0]
 
-      
+        self.joy_l1 = temp[4]
+        self.joy_r1 = temp[5]
 
 
 
@@ -88,17 +108,33 @@ class Controller(object):
 
 
 
+    def send_command(self,command):
 
-    def force_to_throttle(self):
-        """Convert from forces/torques in body coordinates to thrust for the 8 motors."""
-        T = np.array([[0.707,  0.707, -0.707, -0.707,  0,     0,     0,     0],
-              [-0.707, 0.707, -0.707,  0.707,  0,     0,     0,     0],
-                      [ 0,     0,      0,      0,     -1,     1,     1,    -1],
-                      [0.06,  -0.06,   0.06, -0.06,  -0.218, -0.218, 0.218, 0.218],
-              [0.06,   0.06,  -0.06, -0.06,   0.120, -0.120, 0.120, -0.120],
-              [-0.1888, 0.1888, 0.1888,  -0.1888,  0,     0,     0,     0]    
-                                                                 ])
-        self.throttle = np.dot(np.linalg.pinv(T),self.velocity) #TODO modify this accordingly
+        msg = UInt16()
+        # msg.header.stamp = rospy.Time.now()
+        msg.data = command[1]
+        self.pub_vx.publish(msg.data)
+        msg.data = command[0]
+        self.pub_vy.publish(msg.data)
+        msg.data = command[3]
+        self.pub_vz.publish(msg.data)
+        msg.data = np.uint16(1500)
+        self.pub_roll.publish(msg.data)
+        msg.data = np.uint16(1500)
+        self.pub_pitch.publish(msg.data)
+        msg.data = command[2]
+        self.pub_yaw.publish(msg.data)
+
+        # ,self.pub2,self.pub3,self.pub4,self.pub5,self.pub6,self.pub7,self.pub8
+
+    def arm_mother(self):
+        msg = String()
+        msg.data = "manual"
+        self.pub_manual.publish(msg)
+        msg = Bool()
+        msg.data = True
+        self.pub_arm.publish(msg)
+
 
 
 
@@ -107,8 +143,28 @@ class Controller(object):
         
         # while not rospy.is_shutdown():
 
-        print('self.velocity', self.velocity)
-        self.send_ctrl()
+        
+         # Get joystick data
+        
+        # print('joy', joy, joy[0])
+        if self.joy_l1 == 1 and self.joy_r1 == 1:  
+            
+            #joy = self.sub.get_data()['joy']['axes']
+            # print('joy axes', self.velocity)
+            self.send_command(np.uint16(self.velocity*300 + 1500))
+            # rc run between 1100 and 2000, a joy command is between -1.0 and 1.0
+            #override = [int(val*200 + 1500) for val in joy]
+            #for _ in range(len(override), 8):
+            #    override.append(0)
+            # Send joystick data as rc output into rc override topic
+            # (fake radio controller)
+            #self.pub.set_data('/mavros/rc/override', override)
+        if self.joy_control == 1:
+            self.arm_mother()
+
+
+
+        #self.send_ctrl()
         
 
 def main():
@@ -128,7 +184,7 @@ def main():
     if '-v' in args:
         verbose = True
 
-    rate = rospy.Rate(100)
+    rate = rospy.Rate(10)
     # start controller
     vc = Controller(name)
     
