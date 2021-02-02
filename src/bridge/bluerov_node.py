@@ -32,7 +32,8 @@ from sensor_msgs.msg import Imu
 from std_msgs.msg import Bool
 from std_msgs.msg import String
 from std_msgs.msg import UInt16
-
+from mavros_msgs.msg import OverrideRCIn
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 # kg/m^3 convenience
 #DENSITY_FRESHWATER = 997
@@ -375,9 +376,9 @@ class BlueRov(Bridge):
         mag_data = [imu_data['{}mag'.format(i)]  for i in ['x', 'y', 'z']]
 
         #http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html
-        msg.linear_acceleration.x = acc_data[0]/100
-        msg.linear_acceleration.y = acc_data[1]/100
-        msg.linear_acceleration.z = acc_data[2]/100
+        msg.linear_acceleration.x = acc_data[1]/100
+        msg.linear_acceleration.y = acc_data[0]/100
+        msg.linear_acceleration.z = -acc_data[2]/100
         msg.linear_acceleration_covariance = [0, 0, 0, 0, 0, 0, 0, 0, 0]
         # Original way
         #msg.angular_velocity.x = gyr_data[0]/1000
@@ -394,12 +395,20 @@ class BlueRov(Bridge):
         orientation = [attitude_data[i] for i in ['roll', 'pitch', 'yaw']]
 
         #https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Euler_Angles_to_Quaternion_Conversion
+        '''
         cy = math.cos(orientation[2] * 0.5)
         sy = math.sin(orientation[2] * 0.5)
         cr = math.cos(orientation[0] * 0.5)
         sr = math.sin(orientation[0] * 0.5)
         cp = math.cos(orientation[1] * 0.5)
         sp = math.sin(orientation[1] * 0.5)
+        '''
+        cy = math.cos(-orientation[2] * 0.5)
+        sy = math.sin(-orientation[2] * 0.5)
+        cr = math.cos(orientation[1] * 0.5)
+        sr = math.sin(orientation[1] * 0.5)
+        cp = math.cos(orientation[0] * 0.5)
+        sp = math.sin(orientation[0] * 0.5)
 
         msg.orientation.w = cy * cr * cp + sy * sr * sp
         msg.orientation.x = cy * sr * cp - sy * cr * sp
@@ -429,6 +438,10 @@ class BlueRov(Bridge):
 
         #http://docs.ros.org/jade/api/sensor_msgs/html/msg/BatteryState.html
         bat.voltage = self.get_data()['SYS_STATUS']['voltage_battery']/1000
+        if bat.voltage < 13:
+            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+            print('warning battery low:', bat.voltage)
+            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
         bat.current = self.get_data()['SYS_STATUS']['current_battery']/100
         bat.percentage = self.get_data()['BATTERY_STATUS']['battery_remaining']/100
         self.pub.set_data('/battery', bat)
@@ -543,6 +556,10 @@ if __name__ == '__main__':
         exit(1)
 
     bluerov = BlueRov(device='udp:localhost:14550')
-
+    keep_rate = rospy.Rate(100)
+    step = 1
     while not rospy.is_shutdown():
         bluerov.publish()
+        print('s',step)
+        keep_rate.sleep()
+
