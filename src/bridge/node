@@ -13,6 +13,7 @@ except rospy.ROSInterruptException as error:
 device = rospy.get_param("/node/device", 'udp:localhost:14550')
 print('Running with device', device)
 bluerov = BR.BlueRov(device=device)
-
+keep_rate = rospy.Rate(100)
 while not rospy.is_shutdown():
     bluerov.publish()
+    keep_rate.sleep()
