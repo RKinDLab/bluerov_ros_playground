@@ -224,7 +224,7 @@ class BlueRov(Bridge):
         else:
             # No valid id
             return
-        print('msg.data', msg.data, 'id', channel_id)
+        # print('msg.data', msg.data, 'id', channel_id)
         self.set_rc_channel_pwm(channel_id, msg.data)
 
     def _set_mode_callback(self, msg, _):

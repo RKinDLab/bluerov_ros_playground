@@ -17,9 +17,9 @@ from geometry_msgs.msg import TwistStamped
 from mavros_msgs.srv import CommandBool
 from sensor_msgs.msg import JointState, Joy
 
-from sensor_msgs.msg import BatteryState
+from sensor_msgs.msg import BatteryState, Imu
 from mavros_msgs.msg import OverrideRCIn, RCIn, RCOut
-
+from nav_msgs.msg import Odometry
 
 class Code(object):
 
@@ -44,11 +44,18 @@ class Code(object):
         self.pub.subscribe_topic('/mavros/rc/override', OverrideRCIn)
         self.pub.subscribe_topic('/mavros/setpoint_velocity/cmd_vel', TwistStamped)
         self.pub.subscribe_topic('/BlueRov2/body_command', JointState)
+        self.pub.subscribe_topic('/BlueRov2/imu/data', Imu)
+        self.pub.subscribe_topic('/BlueRov2/depth', Odometry)
 
         self.sub.subscribe_topic('/joy', Joy)
         self.sub.subscribe_topic('/mavros/battery', BatteryState)
         self.sub.subscribe_topic('/mavros/rc/in', RCIn)
         self.sub.subscribe_topic('/mavros/rc/out', RCOut)
+        self.sub.subscribe_topic('/mavros/imu/data', Imu)
+
+        self.ROV_name = 'BlueRov2'
+        self.model_base_link = 'base_link'
+        self.water_type = rospy.get_param('/user_node/density_water')
 
         self.cam = None
         try:
@@ -71,6 +78,36 @@ class Code(object):
         # Disarm is necessary when shutting down
         rospy.on_shutdown(self.disarm)
 
+    def _create_depth_msg(self):
+        if 'SCALED_PRESSURE2' not in self.get_data():
+            raise Exception('no Bar30 depth')
+
+        msg = Odometry()
+        self._create_header(msg)
+        msg.header.frame_id = 'odom'
+        msg.child_frame_id = 'base_link' 
+
+        depth_data = self.get_data()['SCALED_PRESSURE2']
+        #  'press_diff': -12.65999984741211, 'time_boot_ms': 8357069, 'temperature': 2462, 'press_abs': 1022.0 
+        # preassure comes in hPA apparently (1022.0 )
+        pressure = depth_data['press_abs']
+        temperature = depth_data['temperature']
+        # need to convert
+        # https://github.com/bluerobotics/ms5837-python    
+        depth = (100.*pressure-101300)/(self.water_type*9.80665)
+        # print('altitude', (1-pow((pressure/1013.25),.190284))*145366.45*.3048 )
+        
+        msg.pose.pose.position.z = depth
+        self.pub.set_data('/depth', msg)
+
+    def _create_header(self, msg,link=None):
+        """ Create ROS message header
+
+        Args:
+            msg (ROS message): ROS message with header
+        """
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = self.model_base_link
 
     @staticmethod
     def pwm_to_thrust(pwm):
@@ -95,30 +132,38 @@ class Code(object):
     def run(self):
         """Run user code
         """
+        rate = rospy.Rate(10)
         while not rospy.is_shutdown():
-            time.sleep(0.1)
+            
             # Try to get data
+            '''
             try:
                 rospy.loginfo(self.sub.get_data()['mavros']['battery']['voltage'])
                 rospy.loginfo(self.sub.get_data()['mavros']['rc']['in']['channels'])
                 rospy.loginfo(self.sub.get_data()['mavros']['rc']['out']['channels'])
             except Exception as error:
                 print('Get data error:', error)
-
+            '''
+            # self._create_depth_msg()
             try:
                 # Get joystick data
-                joy = self.sub.get_data()['joy']['axes']
+                joy = self.sub.get_data()['joy']['buttons']
+                # print('joy', joy, joy[0])
+                if joy[0] == 1:
 
-                # rc run between 1100 and 2000, a joy command is between -1.0 and 1.0
-                override = [int(val*400 + 1500) for val in joy]
-                for _ in range(len(override), 8):
-                    override.append(0)
-                # Send joystick data as rc output into rc override topic
-                # (fake radio controller)
-                self.pub.set_data('/mavros/rc/override', override)
+                    joy = self.sub.get_data()['joy']['axes']
+                    print('joy axes', joy, joy[0])
+                    # rc run between 1100 and 2000, a joy command is between -1.0 and 1.0
+                    #override = [int(val*200 + 1500) for val in joy]
+                    #for _ in range(len(override), 8):
+                    #    override.append(0)
+                    # Send joystick data as rc output into rc override topic
+                    # (fake radio controller)
+                    #self.pub.set_data('/mavros/rc/override', override)
             except Exception as error:
                 print('joy error:', error)
 
+            '''
             try:
                 # Get pwm output and send it to Gazebo model
                 rc = self.sub.get_data()['mavros']['rc']['out']['channels']
@@ -129,9 +174,10 @@ class Code(object):
                 self.pub.set_data('/BlueRov2/body_command', joint)
             except Exception as error:
                 print('rc error:', error)
-
+            
             try:
-                if not self.cam.frame_available():
+                if True:
+                # if not self.cam.frame_available():
                     continue
 
                 # Show video output
@@ -140,6 +186,9 @@ class Code(object):
                 cv2.waitKey(1)
             except Exception as error:
                 print('imshow error:', error)
+            '''
+
+            rate.sleep()
 
     def disarm(self):
         self.arm_service(False)
