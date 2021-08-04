@@ -15,9 +15,9 @@
     </node>
 
     <!-- bring joystick to ROS -->
-    <node respawn="true" pkg="joy" type="joy_node" name="joy_node">
+    <!--node respawn="true" pkg="joy" type="joy_node" name="joy_node">
     	  <param name="dev" type="string" value="$(arg joy_dev)" />
-    </node>
+    </node-->
 
     <!-- start dvl node -->
   	<node name="dvl" pkg="waterlinked_a50_ros_driver" type="publisher.py" output="screen">

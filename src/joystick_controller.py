@@ -79,7 +79,9 @@ class Controller(object):
     def joy_callback(self, msg):
         """Saves the AUV position when a message is received."""
         temp = np.array(msg.axes)
-        self.velocity = np.array([temp[0]/3.,temp[1]/5.,temp[3]/5.,temp[4]/5.])
+        self.velocity = np.array([-temp[0]/3.,temp[1]/5.,temp[3]/5.,temp[4]/5.])
+        # self.velocity = np.array(-[temp[0]/3.,temp[1]/3.,temp[3]/5.,temp[4]/4. - 0.15])
+        # self.velocity = np.array([-temp[0]/3.,temp[1]/4.,temp[3]/4.,temp[4]/5. - 0.15])
         temp = np.array(msg.buttons)
         self.joy_control = temp[0]
 
@@ -109,7 +111,7 @@ class Controller(object):
 
 
     def send_command(self,command):
-
+        print('commands vx, vy, vyaw', round(command[1],3),round(command[0],3), round(command[2],3), round(command[3],3))
         msg = UInt16()
         # msg.header.stamp = rospy.Time.now()
         msg.data = command[1]

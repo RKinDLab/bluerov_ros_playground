@@ -12,6 +12,7 @@
   <arg name="config_yaml" value="$(find mavros)/launch/apm_config.yaml"/>
   <arg name="joy_dev" default="/dev/input/js0"/>
   <arg name="log_output" default="screen"/>
+  <arg name="density" default="997"/>
 
   <node pkg="mavros" type="mavros_node" name="mavros" required="true" clear_params="true" output="$(arg log_output)">
     <param name="fcu_url" value="$(arg fcu_url)"/>
@@ -21,8 +22,8 @@
     <param name="target_system_id" value="$(arg tgt_system)"/>
     <param name="target_component_id" value="$(arg tgt_component)"/>
 
-    <!-- load blacklist, config -->
-    <rosparam command="load" file="$(arg pluginlists_yaml)"/>
+  <!-- load blacklist, config -->
+  <rosparam command="load" file="$(arg pluginlists_yaml)"/>
     <rosparam command="load" file="$(arg config_yaml)"/>
   </node>
 
@@ -33,7 +34,8 @@
 
   <node pkg="rosservice" type="rosservice" name="mavros_set_stream" args="call --wait /mavros/set_stream_rate 0 10 1"/>
 
-  <!--node pkg="bluerov_ros_playground" type="user_mav" name="user_node" output="$(arg log_output)">
+  <node pkg="bluerov_ros_playground" type="user_mav" name="user_node" output="$(arg log_output)">
     <param name="video_udp_port" value="$(arg video_udp_port)"/>
-  </node-->
+    <param name="density_water" value="$(arg density)"/>
+  </node>
 </launch>
