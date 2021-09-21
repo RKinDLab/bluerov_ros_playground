@@ -22,6 +22,7 @@ What is possible ?
   - numpy
   - [gi, gobject](https://wiki.ubuntu.com/Novacut/GStreamer1.0)
   - PyYAML
+  - pymavlink (https://github.com/ArduPilot/pymavlink)
 - [freefloating_gazebo](https://github.com/freefloating-gazebo/freefloating_gazebo)
 - [freefloating_gazebo_demo](https://github.com/freefloating-gazebo/freefloating_gazebo_demo)
 
