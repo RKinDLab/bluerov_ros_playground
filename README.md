@@ -23,7 +23,7 @@ What is possible ?
   - [gi, gobject](https://wiki.ubuntu.com/Novacut/GStreamer1.0)
   - PyYAML
 - [freefloating_gazebo](https://github.com/freefloating-gazebo/freefloating_gazebo)
-
+- [freefloating_gazebo_demo](https://github.com/freefloating-gazebo/freefloating_gazebo_demo)
 
 ### Installation ###
  1. Go to your ROS package source directory:
